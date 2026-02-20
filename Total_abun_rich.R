@@ -2,6 +2,7 @@ library(readxl)
 library(dplyr)
 library(tidyr)
 library(vegan)
+library(indicspecies)
 library(glmmTMB)
 library(emmeans)
 library(car)
@@ -62,8 +63,7 @@ d1<-ggplot(emm_df, aes(x = Treatment, y = response, color = Treatment)) +
   # Add the points for the estimated means
   geom_point(size = 4) +
   # Customize the labels
-  labs(
-       x = "Treatment",
+  labs(x = "Treatment",
        y = "Estimated Total Abundance") + scale_y_log10()+
   # Apply a clean theme
   theme_classic() +
