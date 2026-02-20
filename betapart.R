@@ -37,3 +37,4 @@ permanova_nestedness <- adonis2(dist_nestedness ~ Village + Crop + Treatment,
                                 strata = metadata$Locality,
                                 permutations = 999)
 print(permanova_nestedness)
+

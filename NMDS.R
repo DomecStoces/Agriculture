@@ -51,7 +51,7 @@ print(paste("NMDS Stress:", round(nmds_res$stress, 3)))
 nmds_coords <- as.data.frame(vegan::scores(nmds_res, display = "sites"))
 nmds_coords <- cbind(nmds_coords, metadata)
 
-ggplot(nmds_coords, aes(x = NMDS1, y = NMDS2, color = Treatment, shape = Crop)) +
+d3<-ggplot(nmds_coords, aes(x = NMDS1, y = NMDS2, color = Treatment, shape = Crop)) +
   geom_point(size = 3.5, alpha = 0.8) +
   stat_ellipse(aes(group = Treatment), type = "t", linetype = 2, linewidth = 1, show.legend = FALSE) +
   theme_classic() +
@@ -64,7 +64,7 @@ ggplot(nmds_coords, aes(x = NMDS1, y = NMDS2, color = Treatment, shape = Crop)) 
     legend.title = element_text(size = 12, face = "bold"),
     legend.text = element_text(size = 11)
   )
-
+d3
 
 ### 6. INDICATOR SPECIES ANALYSIS ###
 table(metadata$Treatment)
