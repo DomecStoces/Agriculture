@@ -10,46 +10,44 @@ library(glmmTMB)
 library(emmeans)
 library(car)
 library(ggplot2)
+library(stringr)
 
-long_format <- read_excel("long_format.xlsx")
-long_format <- long_format %>%
+# Data preparation
+long_format <- read_excel("long_format.xlsx") %>%
+  filter(Crop != "Pšenice tvrdá") %>%
   mutate(
-    Treatment = as.factor(Treatment),
-    Crop = as.factor(Crop),
-    Village = as.factor(Village),
-    Locality = as.factor(Locality),
-    Trap = as.factor(Trap),
-    Species = as.factor(Species),
-    Date = as.factor(Date)
-  )
-long_format <- long_format %>%
-  filter(Crop != "Pšenice tvrdá")
-
-filtered_data <- long_format %>%
-  filter(Vole_dist == 1 | Digestate_fertilization == 1)
-
-### 1. Total abundance and species richness ###
-
-# Test for overdispersion
-glm_pois <- glm(total_abundance ~ Treatment * Crop,
-                family = poisson,
-                data = abundance_data)
-dispersion <- sum(residuals(glm_pois, type="pearson")^2) /
-  df.residual(glm_pois)
-dispersion
+    Date_str  = as.character(Date),
+    Month_Num = as.numeric(stringr::str_split_i(Date_str, "\\.", 2)),
+    Month = factor(
+      Month_Num,
+      levels = 6:10,
+      labels = c("June", "July", "August", "September", "October")
+    )
+  ) %>%
+  mutate(across(c(Treatment, Crop, Village, Locality, Trap, Species), as.factor)) %>%
+  droplevels() 
 
 ### 1a) Total abundance per trap ###
 # Rank defficient for: TreatmentREGENERACE:CropPšenice, TreatmentKONVENCE:CropPšenice tvrdá, TreatmentREGENERACE:CropPšenice tvrdá
-
 abundance_data <- long_format %>%
-  group_by(Village, Locality, Trap, Treatment, Crop,Date) %>%
+  group_by(Village, Locality, Trap, Treatment, Crop, Month) %>%
   summarise(
-    total_abundance = sum(Count),
+    total_abundance = sum(Count, na.rm = TRUE),
     richness = n_distinct(Species[Count > 0]),
     .groups = "drop"
-  )
+  ) %>%
+  droplevels()
 
-glm_abund <- glmmTMB(total_abundance ~ Village + Crop + Treatment + (1 | Locality) + (1|Date),
+glm_rich_pois <- glmmTMB(
+  total_abundance ~ Village + Crop + Treatment +
+    (1 | Locality) + (1 | Month),
+  family = poisson(link = "log"),
+  data = abundance_data
+)
+performance::check_overdispersion(glm_rich_pois)
+# Overdispersion detected.
+
+glm_abund <- glmmTMB(total_abundance ~ Village + Crop + Treatment + (1 | Locality) + (1|Month),
                       family = nbinom2(link="log"),
                       data = abundance_data)
 summary(glm_abund)
@@ -81,14 +79,26 @@ d1
 
 ### 1b) Species richness per trap ###
 richness_data <- long_format %>%
-  group_by(Village, Locality, Trap, Treatment, Crop,Date) %>%
+  group_by(Village, Locality, Trap, Treatment, Crop,Month) %>%
   summarise(
     total_richness = n_distinct(Species[Count > 0]),
     .groups = "drop"
-  )
+  )  %>%
+  droplevels()
 head(richness_data)
-glm_rich <- glmmTMB(total_richness ~ Village + Crop + Treatment + (1 | Locality) + (1|Date),
-                      family = nbinom2(link="log"),
+
+glm_rich_pois <- glmmTMB(
+  total_richness ~ Village + Crop + Treatment +
+    (1 | Locality) + (1 | Month),
+  family = poisson(link = "log"),
+  data = richness_data
+)
+performance::check_overdispersion(glm_rich_pois)
+# Species richness per trap was analyzed using a Poisson GLMM (log link). 
+# Overdispersion diagnostics indicated no evidence of overdispersion (dispersion ratio = 0.85).
+
+glm_rich <- glmmTMB(total_richness ~ Village + Crop + Treatment + (1 | Locality) + (1|Month),
+                      family = poisson(link="log"),
                       data = richness_data)
 summary(glm_rich)
 Anova(glm_rich, type = "II")
@@ -97,23 +107,22 @@ emm_df <- as.data.frame(emm_treatment)
 head(emm_df)
 pairwise_results <- pairs(emm_treatment)
 print(pairwise_results)
-d2<-ggplot(emm_df, aes(x = Treatment, y = response, color = Treatment)) +
-  # Updated column names: ymin = asymp.LCL, ymax = asymp.UCL
-  geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), 
+d2 <- ggplot(emm_df, aes(x = Treatment, y = rate, color = Treatment)) +
+  geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL),
                 width = 0.2, linewidth = 1) +
-  # Add the points for the estimated means
   geom_point(size = 4) +
-  # Customize the labels
   labs(
     x = "Treatment",
-    y = "Estimated Species Richness") + scale_y_log10()+
-  # Apply a clean theme
+    y = "Estimated Species Richness"
+  ) +
+  scale_y_log10() +
   theme_classic() +
   theme(
-    legend.position = "none", 
+    legend.position = "none",
     axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
     axis.text.y = element_text(size = 12),
     axis.title = element_text(size = 14, face = "bold"),
     plot.title = element_text(size = 16, hjust = 0.5)
   )
+
 d2

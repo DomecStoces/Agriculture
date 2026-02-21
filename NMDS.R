@@ -1,7 +1,12 @@
 ### Bray-Curtis Dissimilirity Matrix ###
-### 1. Data Prep ###
+# 1. Data Prep
 df_nmds <- long_format %>%
-  mutate(Site_ID = paste(Village, Locality, Trap, sep = "_"))
+  mutate(
+    Month_Num = as.numeric(sapply(strsplit(as.character(Date), "\\."), `[`, 2)),
+    Month = factor(Month_Num, levels = c(6, 7, 8, 9, 10), 
+                   labels = c("June", "July", "August", "September", "October")),
+    Site_ID = paste(Village, Locality, Trap, sep = "_")
+  )
 
 comm_wide <- df_nmds %>%
   group_by(Site_ID, Village, Locality, Treatment, Crop, Species) %>%
@@ -11,13 +16,9 @@ comm_wide <- df_nmds %>%
 comm_matrix <- as.matrix(comm_wide %>% select(-Site_ID, -Village, -Locality, -Treatment, -Crop))
 rownames(comm_matrix) <- comm_wide$Site_ID
 metadata <- comm_wide %>% select(Site_ID, Village, Locality, Treatment, Crop)
-
-# --- THE FIX: Square Root Transformation ---
-# This is standard practice before Bray-Curtis for over-abundant count data
 comm_sqrt <- sqrt(comm_matrix)
 
-
-### 2. PERMDISP ###
+# 2. PERMDISP
 # Use the sqrt-transformed data + Bray
 bray_dist <- vegdist(comm_sqrt, method = "bray")
 
@@ -25,11 +26,11 @@ dispersion_treatment <- betadisper(bray_dist, metadata$Treatment)
 permutest(dispersion_treatment, permutations = 999)
 boxplot(dispersion_treatment)
 tukey_dispersion <- TukeyHSD(dispersion_treatment)
+print(tukey_dispersion)
 
-
-### 3. PERMANOVA ###
+# 3. BRAY-CURTIS PERMANOVA
 set.seed(123)
-# Use comm_sqrt + Bray
+# comm_sqrt + Bray
 permanova_res <- adonis2(comm_sqrt ~ Village + Crop + Treatment, 
                          data = metadata, 
                          method = "bray", 
@@ -39,15 +40,15 @@ permanova_res <- adonis2(comm_sqrt ~ Village + Crop + Treatment,
 print(permanova_res)
 
 
-### 4. NMDS ###
+# 4. NMDS
 set.seed(123)
-# Use comm_sqrt + Bray, and keep autotransform = FALSE so we have manual control
+# comm_sqrt + Bray, and keep autotransform = FALSE so we have manual control
 nmds_res <- metaMDS(comm_sqrt, distance = "bray", k = 2, trymax = 100, autotransform = FALSE) 
 
 print(paste("NMDS Stress:", round(nmds_res$stress, 3)))
 
 
-### 5. GGPLOT2 Visualization ###
+# 5. GGPLOT2 Visualization
 nmds_coords <- as.data.frame(vegan::scores(nmds_res, display = "sites"))
 nmds_coords <- cbind(nmds_coords, metadata)
 
@@ -66,7 +67,7 @@ d3<-ggplot(nmds_coords, aes(x = NMDS1, y = NMDS2, color = Treatment, shape = Cro
   )
 d3
 
-### 6. INDICATOR SPECIES ANALYSIS ###
+# 6. INDICATOR SPECIES ANALYSIS
 table(metadata$Treatment)
 # raw comm_matrix counts
 indval_res <- multipatt(comm_matrix, 
