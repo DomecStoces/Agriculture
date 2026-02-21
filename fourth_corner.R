@@ -129,11 +129,12 @@ plot(rlq_res)
 
 # --- 9) Fourth-corner Analysis ------------------------------------------------
 R_treat <- R[, "Treatment", drop = FALSE]
+Q_diet <- Q[, grep("Diet", colnames(Q)), drop = FALSE]
 set.seed(123) 
 fc_treat <- fourthcorner(
   tabR = R_treat, 
   tabL = L, 
-  tabQ = Q, 
+  tabQ = Q_diet, 
   modeltype = 6, 
   p.adjust.method.G = "none",
   p.adjust.method.D = "none",
