@@ -1,11 +1,7 @@
-# =========================================
 # 1. Convert community matrix to presence/absence
-# =========================================
 comm_pa <- ifelse(comm_matrix > 0, 1, 0)
 
-# =========================================
 # 2. Partition beta diversity (Sørensen)
-# =========================================
 beta_part_sor <- beta.pair(comm_pa, index.family = "sorensen")
 
 # Extract components
@@ -18,9 +14,7 @@ dist_turnover_sqrt <- sqrt(dist_turnover)
 dist_nested_sqrt   <- sqrt(dist_nested)
 dist_total_sqrt    <- sqrt(dist_total)
 
-# =========================================
 # 3. Test homogeneity of dispersions (PERMDISP)
-# =========================================
 disp_turnover <- betadisper(dist_turnover_sqrt, metadata$Treatment)
 disp_nested   <- betadisper(dist_nested_sqrt, metadata$Treatment)
 disp_total    <- betadisper(dist_total_sqrt, metadata$Treatment)
@@ -30,9 +24,7 @@ perm_turnover <- permutest(disp_turnover, permutations = 999)
 perm_nested   <- permutest(disp_nested, permutations = 999)
 perm_total    <- permutest(disp_total, permutations = 999)
 
-# =========================================
 # 4. Extract distances and prepare plot data
-# =========================================
 df_turnover <- data.frame(Distance = disp_turnover$distances,
                           Treatment = metadata$Treatment,
                           Component = "Turnover")
@@ -47,41 +39,38 @@ plot_data_box <- bind_rows(df_nested, df_turnover, df_total)
 plot_data_box$Component <- factor(plot_data_box$Component, 
                                   levels = c("Nestedness", "Turnover", "βdiversity"))
 
-# =========================================
 # 5. Generate significance letters automatically (Tukey HSD)
-# =========================================
 get_sig_letters <- function(disp_obj) {
+  # 1. Run Tukey
   tuk <- TukeyHSD(disp_obj)
   
-  # Convert TukeyHSD result to named vector
-  pvals <- tuk$Treatment[, "p adj"]
-  names(pvals) <- rownames(tuk$Treatment)   # ensure names are character
+  # 2. Extract p-values using $group (the default name betadisper gives it)
+  pvals <- tuk$group[, "p adj"]
+  names(pvals) <- rownames(tuk$group)
   
+  # 3. Get the letters
   library(multcompView)
   cld <- multcompLetters(pvals)$Letters
   
-  # Extract individual treatments from letters
-  # Get all unique treatment names
-  trt_names <- unique(unlist(strsplit(names(cld), "-")))
-  
-  # Map letters to treatments
-  df <- data.frame(Treatment = trt_names,
-                   label = NA,
+  # 4. multcompLetters already outputs a named vector (e.g., EKOLOGIE = "a")
+  # We just need to convert it directly into a dataframe!
+  df <- data.frame(Treatment = names(cld),
+                   label = as.character(cld),
                    stringsAsFactors = FALSE)
-  
-  for(i in seq_along(df$Treatment)) {
-    # find all Tukey pairs containing this treatment
-    idx <- grep(df$Treatment[i], names(cld))
-    # take the letter assigned in multcompLetters (just the first one)
-    df$label[i] <- cld[idx[1]]
-  }
   
   return(df)
 }
 
-# =========================================
 # 6. Plot boxplots with significance letters
-# =========================================
+ann_turnover <- get_sig_letters(disp_turnover)
+ann_turnover$Component <- "Turnover"
+ann_nested <- get_sig_letters(disp_nested)
+ann_nested$Component <- "Nestedness"
+ann_total <- get_sig_letters(disp_total)
+ann_total$Component <- "βdiversity"
+ann_text <- bind_rows(ann_nested, ann_turnover, ann_total)
+ann_text$Component <- factor(ann_text$Component, levels = c("Nestedness", "Turnover", "βdiversity"))
+ann_text$Distance <- 0.75
 bw_colors <- c("EKOLOGIE" = "white", 
                "KONVENCE" = "grey75", 
                "REGENERACE" = "grey40")
@@ -102,28 +91,22 @@ d4<-ggplot(plot_data_box, aes(x = Treatment, y = Distance, fill = Treatment)) +
         legend.position = "none") +
   labs(x = "Treatment", y = "Distance to group centroid")
 d4
-# =========================================
+
 # 7. PERMANOVA on total beta diversity
-# =========================================
 set.seed(123)
 permanova_total <- adonis2(dist_total ~ Village + Crop + Treatment, 
                            data = metadata, 
                            by = "margin", 
                            strata = metadata$Locality,
                            permutations = 999)
-print("--- PERMANOVA: TOTAL BETA DIVERSITY ---")
 print(permanova_total)
 
-# =========================================
-# 8. Pairwise PERMANOVA for Treatment
-# =========================================
 treatments <- unique(metadata$Treatment)
 pairs <- combn(treatments, 2, simplify = FALSE)
 
 pairwise_permanova_results <- data.frame(Pair = character(),
                                          P_Value = numeric(),
                                          stringsAsFactors = FALSE)
-
 set.seed(123)
 for (i in seq_along(pairs)) {
   pair <- pairs[[i]]
@@ -142,12 +125,64 @@ for (i in seq_along(pairs)) {
                                                  P_Value = res["Treatment", "Pr(>F)"]))
 }
 
-# BH correction
-pairwise_permanova_results$P_Adj_BH <- p.adjust(pairwise_permanova_results$P_Value, method = "BH")
-print("--- PAIRWISE PERMANOVA: Composition Differences ---")
-print(pairwise_permanova_results)
+# 8. PERMANOVA on turnover and nestedness components
+pairwise_adonis_custom <- function(dist_obj, metadata) {
+  treatments <- unique(metadata$Treatment)
+  pairs <- combn(treatments, 2, simplify = FALSE)
+  results <- data.frame(Pair = character(), 
+                        F_Value = numeric(),
+                        R2 = numeric(),
+                        P_Value = numeric(), 
+                        stringsAsFactors = FALSE)
+  # Loop through each pair
+  set.seed(123)
+  for (i in seq_along(pairs)) {
+    pair <- pairs[[i]]
+    meta_sub <- metadata %>% filter(Treatment %in% pair)
+    dist_matrix <- as.matrix(dist_obj)
+    dist_sub <- as.dist(dist_matrix[meta_sub$Site_ID, meta_sub$Site_ID])
+    res <- adonis2(dist_sub ~ Village + Crop + Treatment, 
+                   data = meta_sub, 
+                   by = "margin", 
+                   strata = meta_sub$Locality, 
+                   permutations = 999)
+    # Extract stats specifically for the Treatment
+    results <- rbind(results, data.frame(
+      Pair = paste(pair[1], "vs", pair[2]),
+      F_Value = round(res["Treatment", "F"], 3),
+      R2 = round(res["Treatment", "R2"], 3),
+      P_Value = res["Treatment", "Pr(>F)"]
+    ))
+  }
+  results$P_Adj_BH <- round(p.adjust(results$P_Value, method = "BH"), 4)
+  return(results)
+}
 
-### Pairwise comparisons of TURNOVER and NESTEDNESS DISPERSION ###
-TukeyHSD(disp_turnover)
-TukeyHSD(disp_nested)
-TukeyHSD(disp_total)
+# 9a) Result outputs for nestedness, turnover and total betadiversity => global tests
+set.seed(123)
+global_nested <- adonis2(dist_nested ~ Village + Crop + Treatment, 
+                         data = metadata, 
+                         by = "margin", 
+                         strata = metadata$Locality,
+                         permutations = 999)
+print(global_nested)
+
+set.seed(123)
+global_turnover <- adonis2(dist_turnover ~ Village + Crop + Treatment, 
+                           data = metadata, 
+                           by = "margin", 
+                           strata = metadata$Locality,
+                           permutations = 999)
+print(global_turnover)
+
+# 9b) Result outputs for nestedness, turnover and total betadiversity => pairwise comparisons
+pw_nested <- pairwise_adonis_custom(dist_nested, metadata)
+print(pw_nested)
+
+pw_turnover <- pairwise_adonis_custom(dist_turnover, metadata)
+print(pw_turnover)
+
+pw_total <- pairwise_adonis_custom(dist_total, metadata)
+print(pw_total)
+
+
