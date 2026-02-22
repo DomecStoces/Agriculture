@@ -11,6 +11,7 @@ library(emmeans)
 library(car)
 library(ggplot2)
 library(stringr)
+library(DHARMa)
 
 # Data preparation
 long_format <- read_excel("long_format.xlsx") %>%
@@ -52,6 +53,9 @@ glm_abund <- glmmTMB(total_abundance ~ Village + Crop + Treatment + (1 | Localit
                       data = abundance_data)
 summary(glm_abund)
 Anova(glm_abund, type = "II")
+sim_res <- simulateResiduals(glm_abund)
+plot(sim_res)
+
 emm_treatment <- emmeans(glm_abund, ~ Treatment, type = "response")
 emm_df <- as.data.frame(emm_treatment)
 head(emm_df)
@@ -102,6 +106,8 @@ glm_rich <- glmmTMB(total_richness ~ Village + Crop + Treatment + (1 | Locality)
                       data = richness_data)
 summary(glm_rich)
 Anova(glm_rich, type = "II")
+sim_res <- simulateResiduals(glm_rich)
+plot(sim_res)
 emm_treatment <- emmeans(glm_rich, ~ Treatment, type = "response")
 emm_df <- as.data.frame(emm_treatment)
 head(emm_df)
