@@ -40,10 +40,10 @@ ann_text <- data.frame(
   Treatment = c("EKOLOGIE", "KONVENCE", "REGENERACE", 
                 "EKOLOGIE", "KONVENCE", "REGENERACE", 
                 "EKOLOGIE", "KONVENCE", "REGENERACE"),
-  Distance = 0.75, # Set height for labels
-  label = c("a", "a", "a",    # Nestedness (None sig)
-            "ab", "a", "b",   # Turnover (Sig diff K-R)
-            "a", "a", "ab"),   # Beta Diversity (Sig diff K-R)
+  Distance = 0.75,
+  label = c("a", "a", "a",    # Nestedness (PERMDISP)
+            "ab", "b", "a",   # Turnover (PERMDISP)
+            "a", "b", "a"),   # Beta Diversity (PERMDISP)
   Component = factor(c("Nestedness", "Nestedness", "Nestedness", 
                        "Turnover", "Turnover", "Turnover", 
                        "βdiversity", "βdiversity", "βdiversity"),

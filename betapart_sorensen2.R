@@ -74,11 +74,9 @@ ann_text <- data.frame(
     rep(c("Nestedness", "Turnover", "βdiversity"), each = 3), 
     levels = c("Nestedness", "Turnover", "βdiversity")
   ),
-  label = c(
-    "a", "a", "a",  # Nestedness letters
-    "a", "b", "c",  # Turnover letters
-    "a", "b", "c"   # βdiversity letters
-  ),
+  label = c("a", "a", "a",    # Nestedness (PERMDISP)
+            "ab", "b", "a",   # Turnover (PERMDISP)
+            "a", "b", "a"),   # Beta Diversity (PERMDISP)
   Distance = 0.75   # Y-axis position for the letters. Adjust if needed!
 )
 bw_colors <- c("EKOLOGIE" = "white", 
