@@ -24,6 +24,9 @@ perm_turnover <- permutest(disp_turnover, permutations = 999)
 perm_nested   <- permutest(disp_nested, permutations = 999)
 perm_total    <- permutest(disp_total, permutations = 999)
 
+print(perm_turnover)
+print(perm_nested)
+print(perm_total)
 # 4. Extract distances and prepare plot data
 df_turnover <- data.frame(Distance = disp_turnover$distances,
                           Treatment = metadata$Treatment,
