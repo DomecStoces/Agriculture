@@ -27,6 +27,9 @@ perm_total    <- permutest(disp_total, permutations = 999)
 print(perm_turnover)
 print(perm_nested)
 print(perm_total)
+
+TukeyHSD(disp_turnover)
+TukeyHSD(disp_total)
 # 4. Extract distances and prepare plot data
 df_turnover <- data.frame(Distance = disp_turnover$distances,
                           Treatment = metadata$Treatment,
