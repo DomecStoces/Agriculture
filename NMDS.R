@@ -9,13 +9,13 @@ df_nmds <- long_format %>%
   )
 
 comm_wide <- df_nmds %>%
-  group_by(Site_ID, Village, Locality, Treatment, Crop, Species) %>%
+  group_by(Site_ID, Village, Locality, Treatment, Species) %>%
   summarise(Count = sum(Count, na.rm = TRUE), .groups = "drop") %>%
   pivot_wider(names_from = Species, values_from = Count, values_fill = 0)
 
-comm_matrix <- as.matrix(comm_wide %>% select(-Site_ID, -Village, -Locality, -Treatment, -Crop))
+comm_matrix <- as.matrix(comm_wide %>% select(-Site_ID, -Village, -Locality, -Treatment))
 rownames(comm_matrix) <- comm_wide$Site_ID
-metadata <- comm_wide %>% select(Site_ID, Village, Locality, Treatment, Crop)
+metadata <- comm_wide %>% select(Site_ID, Village, Locality, Treatment)
 comm_sqrt <- sqrt(comm_matrix)
 
 # 2. PERMDISP
@@ -31,7 +31,7 @@ print(tukey_dispersion)
 # 3. BRAY-CURTIS PERMANOVA
 set.seed(123)
 # comm_sqrt + Bray
-permanova_res <- adonis2(comm_sqrt ~ Village + Crop + Treatment, 
+permanova_res <- adonis2(comm_sqrt ~ Village + Treatment, 
                          data = metadata, 
                          method = "bray", 
                          by = "margin",               
@@ -52,11 +52,11 @@ print(paste("NMDS Stress:", round(nmds_res$stress, 3)))
 nmds_coords <- as.data.frame(vegan::scores(nmds_res, display = "sites"))
 nmds_coords <- cbind(nmds_coords, metadata)
 
-d3<-ggplot(nmds_coords, aes(x = NMDS1, y = NMDS2, color = Treatment, shape = Crop)) +
+d3<-ggplot(nmds_coords, aes(x = NMDS1, y = NMDS2, color = Treatment)) +
   geom_point(size = 3.5, alpha = 0.8) +
   stat_ellipse(aes(group = Treatment), type = "t", linetype = 2, linewidth = 1, show.legend = FALSE) +
   theme_classic() +
-  labs(subtitle = paste("Stress =", round(nmds_res$stress, 3)),
+  labs(subtitle = paste("Stres =", round(nmds_res$stress, 3)),
        x = "NMDS 1",
        y = "NMDS 2") +
   theme(
