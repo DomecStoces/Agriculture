@@ -62,15 +62,19 @@ get_sig_letters <- function(disp_obj) {
 }
 
 # 6. Plot boxplots with significance letters
-ann_turnover <- get_sig_letters(disp_turnover)
-ann_turnover$Component <- "Turnover"
-ann_nested <- get_sig_letters(disp_nested)
-ann_nested$Component <- "Nestedness"
-ann_total <- get_sig_letters(disp_total)
-ann_total$Component <- "βdiversity"
-ann_text <- bind_rows(ann_nested, ann_turnover, ann_total)
-ann_text$Component <- factor(ann_text$Component, levels = c("Nestedness", "Turnover", "βdiversity"))
-ann_text$Distance <- 0.75
+ann_text <- data.frame(
+  Treatment = rep(c("EKOLOGIE", "KONVENCE", "REGENERACE"), 3),
+  Component = factor(
+    rep(c("Nestedness", "Turnover", "βdiversity"), each = 3), 
+    levels = c("Nestedness", "Turnover", "βdiversity")
+  ),
+  label = c(
+    "a", "a", "a",  # Nestedness letters
+    "a", "b", "c",  # Turnover letters
+    "a", "b", "c"   # βdiversity letters
+  ),
+  Distance = 0.75   # Y-axis position for the letters. Adjust if needed!
+)
 bw_colors <- c("EKOLOGIE" = "white", 
                "KONVENCE" = "grey75", 
                "REGENERACE" = "grey40")
@@ -94,10 +98,9 @@ d4
 
 # 7. PERMANOVA on total beta diversity
 set.seed(123)
-permanova_total <- adonis2(dist_total ~ Village + Crop + Treatment, 
+permanova_total <- adonis2(dist_total ~ Village + Treatment, 
                            data = metadata, 
-                           by = "margin", 
-                           strata = metadata$Locality,
+                           by = "margin",
                            permutations = 999)
 print(permanova_total)
 
@@ -114,10 +117,9 @@ for (i in seq_along(pairs)) {
   
   dist_sub <- as.dist(as.matrix(dist_total)[meta_sub$Site_ID, meta_sub$Site_ID])
   
-  res <- adonis2(dist_sub ~ Village + Crop + Treatment,
+  res <- adonis2(dist_sub ~ Village + Treatment,
                  data = meta_sub,
                  by = "margin",
-                 strata = meta_sub$Locality,
                  permutations = 999)
   
   pairwise_permanova_results <- rbind(pairwise_permanova_results, 
@@ -141,10 +143,9 @@ pairwise_adonis_custom <- function(dist_obj, metadata) {
     meta_sub <- metadata %>% filter(Treatment %in% pair)
     dist_matrix <- as.matrix(dist_obj)
     dist_sub <- as.dist(dist_matrix[meta_sub$Site_ID, meta_sub$Site_ID])
-    res <- adonis2(dist_sub ~ Village + Crop + Treatment, 
+    res <- adonis2(dist_sub ~ Village + Treatment, 
                    data = meta_sub, 
                    by = "margin", 
-                   strata = meta_sub$Locality, 
                    permutations = 999)
     # Extract stats specifically for the Treatment
     results <- rbind(results, data.frame(
@@ -160,18 +161,16 @@ pairwise_adonis_custom <- function(dist_obj, metadata) {
 
 # 9a) Result outputs for nestedness, turnover and total betadiversity => global tests
 set.seed(123)
-global_nested <- adonis2(dist_nested ~ Village + Crop + Treatment, 
+global_nested <- adonis2(dist_nested ~ Village + Treatment, 
                          data = metadata, 
-                         by = "margin", 
-                         strata = metadata$Locality,
+                         by = "margin",
                          permutations = 999)
 print(global_nested)
 
 set.seed(123)
-global_turnover <- adonis2(dist_turnover ~ Village + Crop + Treatment, 
+global_turnover <- adonis2(dist_turnover ~ Village + Treatment, 
                            data = metadata, 
-                           by = "margin", 
-                           strata = metadata$Locality,
+                           by = "margin",
                            permutations = 999)
 print(global_turnover)
 

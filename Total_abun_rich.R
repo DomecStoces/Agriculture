@@ -12,6 +12,7 @@ library(car)
 library(ggplot2)
 library(stringr)
 library(DHARMa)
+library(betapart)
 
 # Data preparation
 long_format <- read_excel("long_format.xlsx") %>%
