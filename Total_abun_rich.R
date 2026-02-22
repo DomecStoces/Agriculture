@@ -48,13 +48,17 @@ glm_rich_pois <- glmmTMB(
 performance::check_overdispersion(glm_rich_pois)
 # Overdispersion detected.
 
-glm_abund <- glmmTMB(total_abundance ~ Village + Crop + Treatment + (1 | Locality) + (1|Month),
+glm_abund <- glmmTMB(total_abundance ~ Village + Treatment +(1|Locality/Trap) + (1|Month),
                       family = nbinom2(link="log"),
                       data = abundance_data)
 summary(glm_abund)
 Anova(glm_abund, type = "II")
 sim_res <- simulateResiduals(glm_abund)
 plot(sim_res)
+
+plotResiduals(sim_res, form = abundance_data$Treatment)
+plotResiduals(sim_res, form = abundance_data$Crop)
+plotResiduals(sim_res, form = abundance_data$Village)
 
 emm_treatment <- emmeans(glm_abund, ~ Treatment, type = "response")
 emm_df <- as.data.frame(emm_treatment)
@@ -101,13 +105,15 @@ performance::check_overdispersion(glm_rich_pois)
 # Species richness per trap was analyzed using a Poisson GLMM (log link). 
 # Overdispersion diagnostics indicated no evidence of overdispersion (dispersion ratio = 0.85).
 
-glm_rich <- glmmTMB(total_richness ~ Village + Crop + Treatment + (1 | Locality) + (1|Month),
+glm_rich <- glmmTMB(total_richness ~ Village + Treatment + (1 | Locality) + (1|Month),
                       family = poisson(link="log"),
                       data = richness_data)
+
 summary(glm_rich)
 Anova(glm_rich, type = "II")
 sim_res <- simulateResiduals(glm_rich)
 plot(sim_res)
+
 emm_treatment <- emmeans(glm_rich, ~ Treatment, type = "response")
 emm_df <- as.data.frame(emm_treatment)
 head(emm_df)
