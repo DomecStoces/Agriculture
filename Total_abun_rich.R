@@ -105,7 +105,7 @@ performance::check_overdispersion(glm_rich_pois)
 # Species richness per trap was analyzed using a Poisson GLMM (log link). 
 # Overdispersion diagnostics indicated no evidence of overdispersion (dispersion ratio = 0.85).
 
-glm_rich <- glmmTMB(total_richness ~ Village + Treatment + (1 | Locality) + (1|Month),
+glm_rich <- glmmTMB(total_richness ~ Village + Treatment + (1 | Locality/Trap) + (1|Month),
                       family = poisson(link="log"),
                       data = richness_data)
 
