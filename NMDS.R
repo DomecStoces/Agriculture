@@ -9,13 +9,13 @@ df_nmds <- long_format %>%
   )
 
 comm_wide <- df_nmds %>%
-  group_by(Site_ID, Village, Locality, Treatment, Species) %>%
+  group_by(Site_ID, Village, Treatment, Species) %>%
   summarise(Count = sum(Count, na.rm = TRUE), .groups = "drop") %>%
   pivot_wider(names_from = Species, values_from = Count, values_fill = 0)
 
-comm_matrix <- as.matrix(comm_wide %>% select(-Site_ID, -Village, -Locality, -Treatment))
+comm_matrix <- as.matrix(comm_wide %>% select(-Site_ID, -Village, -Treatment))
 rownames(comm_matrix) <- comm_wide$Site_ID
-metadata <- comm_wide %>% select(Site_ID, Village, Locality, Treatment)
+metadata <- comm_wide %>% select(Site_ID, Village, Treatment)
 comm_sqrt <- sqrt(comm_matrix)
 
 # 2. PERMDISP
@@ -32,13 +32,11 @@ print(tukey_dispersion)
 set.seed(123)
 # comm_sqrt + Bray
 permanova_res <- adonis2(comm_sqrt ~ Village + Treatment, 
-                         data = metadata, 
+                         data = metadata,
                          method = "bray", 
-                         by = "margin",               
-                         strata = metadata$Locality,
+                         by = "margin",
                          permutations = 999)
 print(permanova_res)
-
 
 # 4. NMDS
 set.seed(123)
